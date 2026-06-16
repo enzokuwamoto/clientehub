@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface PromocaoRepository extends JpaRepository<Promocao, Long> {
+    java.util.Optional<Promocao> findByNome(String nome);
 }

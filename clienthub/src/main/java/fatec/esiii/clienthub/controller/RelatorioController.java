@@ -16,6 +16,9 @@ public class RelatorioController {
 
     @Autowired
     private ReservaRepository reservaRepository;
+    
+    @Autowired
+    private fatec.esiii.clienthub.dao.PromocaoRepository promocaoRepository;
 
     @GetMapping("/ocupacao")
     public ResponseEntity<?> relatorioOcupacao() {
@@ -41,5 +44,36 @@ public class RelatorioController {
         Map<String, Double> financeiro = new HashMap<>();
         financeiro.put("receitaBrutaTotal Estimada", receitaTotal);
         return ResponseEntity.ok(financeiro);
+    }
+
+    @GetMapping("/origem")
+    public ResponseEntity<?> relatorioOrigem() {
+        List<Reserva> reservas = reservaRepository.findAll();
+        Map<String, Long> origens = new HashMap<>();
+        
+        long site = reservas.stream().filter(r -> "SITE".equalsIgnoreCase(r.getOrigem())).count();
+        long balcao = reservas.stream().filter(r -> "BALCAO".equalsIgnoreCase(r.getOrigem())).count();
+        long agencia = reservas.stream().filter(r -> "AGENCIA".equalsIgnoreCase(r.getOrigem())).count();
+        long outros = reservas.size() - site - balcao - agencia;
+        
+        origens.put("Site", site);
+        origens.put("Balcao", balcao);
+        origens.put("Agencia", agencia);
+        origens.put("Outros", outros);
+        
+        return ResponseEntity.ok(origens);
+    }
+
+    @GetMapping("/promocoes")
+    public ResponseEntity<?> relatorioPromocoes() {
+        List<fatec.esiii.clienthub.model.Promocao> promocoes = promocaoRepository.findAll();
+        Map<String, Long> desempenho = new HashMap<>();
+        
+        // Simulação de uso das promoções
+        for (fatec.esiii.clienthub.model.Promocao promo : promocoes) {
+            desempenho.put(promo.getNome(), (long) (Math.random() * 50));
+        }
+        
+        return ResponseEntity.ok(desempenho);
     }
 }

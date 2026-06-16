@@ -11,6 +11,9 @@ public class ValidarJanelaDatas implements IStrategy {
             Reserva reserva = (Reserva) entidade;
             
             if (reserva.getDataEntrada() != null && reserva.getDataSaida() != null) {
+                if (reserva.getDataEntrada().isBefore(java.time.LocalDate.now())) {
+                    return "A data de check-in não pode ser no passado.";
+                }
                 if (!reserva.getDataSaida().isAfter(reserva.getDataEntrada())) {
                     return "RN0212: A data de saída deve ser posterior à data de entrada.";
                 }

@@ -15,9 +15,13 @@ export default function ReservaCrud() {
   const [formData, setFormData] = useState({
     hospedeId: '',
     quartoId: '',
-    dataCheckIn: '',
-    dataCheckOut: '',
-    status: 'CONFIRMADA'
+    dataEntrada: '',
+    dataSaida: '',
+    qtdeAdultos: 1,
+    qtdeCriancas: 0,
+    qtdeCriancasAte5A: 0,
+    codigoPromocional: '',
+    status: 'PROPOSTA'
   });
 
   useEffect(() => {
@@ -60,11 +64,16 @@ export default function ReservaCrud() {
 
     // Constrói o objeto esperado pelo backend (assumindo aninhamento padrão do Spring Data REST / JPA)
     const payload = {
-      dataCheckIn: formData.dataCheckIn,
-      dataCheckOut: formData.dataCheckOut,
+      dataEntrada: formData.dataEntrada,
+      dataSaida: formData.dataSaida,
+      qtdeAdultos: parseInt(formData.qtdeAdultos),
+      qtdeCriancas: parseInt(formData.qtdeCriancas),
+      qtdeCriancasAte5A: parseInt(formData.qtdeCriancasAte5A),
+      codigoPromocional: formData.codigoPromocional,
       status: formData.status,
       hospede: { id: formData.hospedeId },
-      quarto: { id: formData.quartoId }
+      quarto: { id: formData.quartoId },
+      origem: 'SITE' // Fixado temporariamente
     };
 
     try {
@@ -75,17 +84,49 @@ export default function ReservaCrud() {
       });
 
       if (!response.ok) {
-        const errData = await response.text();
-        throw new Error(errData || 'Erro ao criar reserva. Pode ser indisponibilidade do quarto.');
+        let errMessage = 'Erro na requisição. Verifique os dados.';
+        try {
+          const errObj = await response.json();
+          if (errObj.erro) errMessage = errObj.erro;
+          else if (errObj.error === 'Bad Request') errMessage = 'Dados inválidos. Verifique se os campos foram preenchidos corretamente.';
+          else errMessage = errObj.message || errObj.error || errMessage;
+        } catch(e) {
+          // fallback
+        }
+        throw new Error(errMessage);
       }
 
       setSuccess(`Reserva criada com sucesso!`);
-      setFormData({ hospedeId: '', quartoId: '', dataCheckIn: '', dataCheckOut: '', status: 'CONFIRMADA' });
+      setFormData({ hospedeId: '', quartoId: '', dataEntrada: '', dataSaida: '', qtdeAdultos: 1, qtdeCriancas: 0, qtdeCriancasAte5A: 0, codigoPromocional: '', status: 'PROPOSTA' });
       fetchData(); // atualiza a lista
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (reserva, novoStatus) => {
+    if (!window.confirm(`Deseja alterar a reserva #${reserva.id} para ${novoStatus}?`)) return;
+    try {
+      const payload = { ...reserva, status: novoStatus };
+      const res = await fetch(`${API_RESERVAS}/${reserva.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        let errMessage = 'Erro ao atualizar status';
+        try {
+          const errObj = await res.json();
+          if (errObj.erro) errMessage = errObj.erro;
+          else if (errObj.error === 'Bad Request') errMessage = 'Dados inválidos ao atualizar.';
+        } catch(e) {}
+        throw new Error(errMessage);
+      }
+      fetchData();
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -122,12 +163,32 @@ export default function ReservaCrud() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>Check-in</label>
-                <input type="date" name="dataCheckIn" value={formData.dataCheckIn} onChange={handleInputChange} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} />
+                <input type="date" name="dataEntrada" value={formData.dataEntrada} onChange={handleInputChange} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>Check-out</label>
-                <input type="date" name="dataCheckOut" value={formData.dataCheckOut} onChange={handleInputChange} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} />
+                <input type="date" name="dataSaida" value={formData.dataSaida} onChange={handleInputChange} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} />
               </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>Adultos</label>
+                <input type="number" min="1" name="qtdeAdultos" value={formData.qtdeAdultos} onChange={handleInputChange} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>Crianças</label>
+                <input type="number" min="0" name="qtdeCriancas" value={formData.qtdeCriancas} onChange={handleInputChange} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>Crianças &lt; 5a</label>
+                <input type="number" min="0" max={formData.qtdeCriancas} name="qtdeCriancasAte5A" value={formData.qtdeCriancasAte5A} onChange={handleInputChange} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>Código Promocional</label>
+              <input type="text" name="codigoPromocional" value={formData.codigoPromocional} onChange={handleInputChange} placeholder="Opcional" style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} />
             </div>
 
             <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
@@ -151,6 +212,7 @@ export default function ReservaCrud() {
                   <th style={{ padding: '12px', textAlign: 'left' }}>Quarto</th>
                   <th style={{ padding: '12px', textAlign: 'left' }}>Período</th>
                   <th style={{ padding: '12px', textAlign: 'left' }}>Status</th>
+                  <th style={{ padding: '12px', textAlign: 'left' }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -158,14 +220,29 @@ export default function ReservaCrud() {
                   <tr key={r.id} style={{ borderBottom: '1px solid #eee' }}>
                     <td style={{ padding: '12px', fontWeight: 'bold' }}>{r.hospede ? r.hospede.nome : 'N/A'}</td>
                     <td style={{ padding: '12px' }}>{r.quarto ? r.quarto.numero : 'N/A'}</td>
-                    <td style={{ padding: '12px' }}>{r.dataCheckIn} até {r.dataCheckOut}</td>
+                    <td style={{ padding: '12px' }}>{r.dataEntrada ? r.dataEntrada.split('-').reverse().join('/') : ''} até {r.dataSaida ? r.dataSaida.split('-').reverse().join('/') : ''}</td>
                     <td style={{ padding: '12px' }}>
                       <span style={{ 
                         padding: '4px 8px', borderRadius: '12px', fontSize: '12px',
-                        background: '#e3f2fd', color: '#1565c0'
+                        background: r.status === 'CONFIRMADA' ? '#e8f5e9' : r.status === 'CANCELADA' ? '#ffebee' : '#e3f2fd',
+                        color: r.status === 'CONFIRMADA' ? '#2e7d32' : r.status === 'CANCELADA' ? '#c62828' : '#1565c0'
                       }}>
                         {r.status}
                       </span>
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      {r.status === 'CONFIRMADA' && (
+                        <>
+                          <button onClick={() => handleUpdateStatus(r, 'CHECK_IN')} style={{ marginRight: '8px', padding: '4px 8px', background: '#e3f2fd', border: '1px solid #1565c0', color: '#1565c0', borderRadius: '4px', cursor: 'pointer' }}>Check-in</button>
+                          <button onClick={() => handleUpdateStatus(r, 'NO_SHOW')} style={{ padding: '4px 8px', background: '#ffebee', border: '1px solid #c62828', color: '#c62828', borderRadius: '4px', cursor: 'pointer' }}>No-show</button>
+                        </>
+                      )}
+                      {r.status === 'CHECK_IN' && (
+                        <button onClick={() => handleUpdateStatus(r, 'CHECK_OUT')} style={{ padding: '4px 8px', background: '#e8f5e9', border: '1px solid #2e7d32', color: '#2e7d32', borderRadius: '4px', cursor: 'pointer' }}>Check-out</button>
+                      )}
+                      {r.status !== 'CANCELADA' && r.status !== 'CHECK_OUT' && (
+                        <button onClick={() => handleUpdateStatus(r, 'CANCELADA')} style={{ marginLeft: '8px', padding: '4px 8px', background: 'transparent', border: 'none', color: '#c62828', textDecoration: 'underline', cursor: 'pointer' }}>Cancelar</button>
+                      )}
                     </td>
                   </tr>
                 ))}

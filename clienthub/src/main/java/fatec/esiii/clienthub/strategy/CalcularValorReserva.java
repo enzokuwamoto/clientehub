@@ -16,6 +16,9 @@ public class CalcularValorReserva implements IStrategy {
 
     @Autowired
     private QuartoRepository quartoRepository;
+    
+    @Autowired
+    private fatec.esiii.clienthub.dao.PromocaoRepository promocaoRepository;
 
     @Override
     public String processar(EntidadeDominio entidade) {
@@ -33,13 +36,28 @@ public class CalcularValorReserva implements IStrategy {
                     BigDecimal precoBase = quarto.getPrecoBaseDiaria();
                     BigDecimal valorBaseTotal = precoBase.multiply(new BigDecimal(diarias));
                     
-                    // RN0241: Crianças até 5 anos não pagam. 
-                    // Na nossa modelagem simplificada, o preço base do quarto cobre a capacidade total
-                    // Se houvesse custo extra por adulto, calcularíamos aqui. Vamos assumir que a reserva pega o valor do quarto cheio.
+                    if (reserva.getQtdeCriancasAte5A() > 0) {
+                        BigDecimal descontoCrianca = new BigDecimal("50.00")
+                            .multiply(new BigDecimal(reserva.getQtdeCriancasAte5A()))
+                            .multiply(new BigDecimal(diarias));
+                        valorBaseTotal = valorBaseTotal.subtract(descontoCrianca);
+                    }
                     
-                    // RN0242: Promoções aplicáveis
-                    // Para simplificar, assumimos que não há promoção ativa acoplada diretamente à reserva aqui, 
-                    // ou poderíamos buscar do BD a promoção e aplicar desconto.
+                    if (valorBaseTotal.compareTo(BigDecimal.ZERO) < 0) {
+                        valorBaseTotal = BigDecimal.ZERO;
+                    }
+                    
+                    if (reserva.getCodigoPromocional() != null && !reserva.getCodigoPromocional().trim().isEmpty()) {
+                        Optional<fatec.esiii.clienthub.model.Promocao> promoOpt = promocaoRepository.findByNome(reserva.getCodigoPromocional().trim());
+                        if (promoOpt.isPresent()) {
+                            BigDecimal percentual = promoOpt.get().getDescontoPercentual();
+                            if (percentual != null && percentual.compareTo(BigDecimal.ZERO) > 0) {
+                                BigDecimal multiplicador = percentual.divide(new BigDecimal("100.00"), 4, java.math.RoundingMode.HALF_UP);
+                                BigDecimal desconto = valorBaseTotal.multiply(multiplicador);
+                                valorBaseTotal = valorBaseTotal.subtract(desconto);
+                            }
+                        }
+                    }
                     
                     reserva.setValorTotal(valorBaseTotal);
                 }

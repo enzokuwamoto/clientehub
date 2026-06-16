@@ -27,6 +27,10 @@ public class Fachada implements IFachada {
     @Autowired private CalcularValorReserva calcularValorReserva;
     @Autowired private ValidarConfirmacaoCondicionadaPgto validarConfirmacaoCondicionadaPgto;
     @Autowired private CalcularMultaCancelamento calcularMultaCancelamento;
+    @Autowired private DispararNotificacoes dispararNotificacoes;
+    @Autowired private ValidarLimitePadraoQuarto validarLimitePadraoQuarto;
+    @Autowired private ValidarRegrasDiaria validarRegrasDiaria;
+    @Autowired private ValidarDocumentoCheckIn validarDocumentoCheckIn;
 
     private Map<String, Map<String, List<IStrategy>>> rns;
 
@@ -57,9 +61,11 @@ public class Fachada implements IFachada {
             "CONSULTAR", List.of(gerarLog)
         ));
 
+        ValidarDatasPromocao validarDatasPromocao = new ValidarDatasPromocao();
+        
         rns.put(Promocao.class.getName(), Map.of(
-            "SALVAR", List.of(gerarLog),
-            "ALTERAR", List.of(gerarLog),
+            "SALVAR", List.of(validarDatasPromocao, gerarLog),
+            "ALTERAR", List.of(validarDatasPromocao, gerarLog),
             "EXCLUIR", List.of(gerarLog),
             "CONSULTAR", List.of(gerarLog)
         ));
@@ -77,23 +83,29 @@ public class Fachada implements IFachada {
 
         List<IStrategy> rnsSalvarReserva = List.of(
             validarDadosReserva, validarJanelaDatas, validarCapacidadeQuarto, 
-            validarMinimoDiarias, calcularValorReserva, validarConfirmacaoCondicionadaPgto, gerarLog
+            validarLimitePadraoQuarto, validarRegrasDiaria,
+            validarMinimoDiarias, calcularValorReserva, validarConfirmacaoCondicionadaPgto, dispararNotificacoes, gerarLog
         );
-        List<IStrategy> rnsAlterarReserva = rnsSalvarReserva;
+        List<IStrategy> rnsAlterarReserva = List.of(
+            validarDadosReserva, validarJanelaDatas, validarCapacidadeQuarto, 
+            validarLimitePadraoQuarto, validarRegrasDiaria,
+            validarMinimoDiarias, calcularValorReserva, validarConfirmacaoCondicionadaPgto, validarDocumentoCheckIn, dispararNotificacoes, gerarLog
+        );
 
         rns.put(Reserva.class.getName(), Map.of(
             "SALVAR", rnsSalvarReserva,
             "ALTERAR", rnsAlterarReserva,
-            "EXCLUIR", List.of(calcularMultaCancelamento, gerarLog), // Exclusão = cancelamento neste escopo
+            "EXCLUIR", List.of(calcularMultaCancelamento, dispararNotificacoes, gerarLog), // Exclusão = cancelamento neste escopo
             "CONSULTAR", List.of(gerarLog)
         ));
 
         ValidarDadosPagamento validarDadosPagamento = new ValidarDadosPagamento();
         CalcularEstorno calcularEstorno = new CalcularEstorno();
+        AtualizarReservaPagamentoAprovado atualizarReservaPagamentoAprovado = new AtualizarReservaPagamentoAprovado();
 
         rns.put(Pagamento.class.getName(), Map.of(
-            "SALVAR", List.of(validarDadosPagamento, gerarLog),
-            "ALTERAR", List.of(validarDadosPagamento, gerarLog),
+            "SALVAR", List.of(validarDadosPagamento, atualizarReservaPagamentoAprovado, gerarLog),
+            "ALTERAR", List.of(validarDadosPagamento, atualizarReservaPagamentoAprovado, gerarLog),
             "EXCLUIR", List.of(calcularEstorno, gerarLog), // Excluir pagamento = estorno
             "CONSULTAR", List.of(gerarLog)
         ));
