@@ -31,6 +31,9 @@ public class Fachada implements IFachada {
     @Autowired private ValidarLimitePadraoQuarto validarLimitePadraoQuarto;
     @Autowired private ValidarRegrasDiaria validarRegrasDiaria;
     @Autowired private ValidarDocumentoCheckIn validarDocumentoCheckIn;
+    @Autowired private AtualizarReservaPagamentoAprovado atualizarReservaPagamentoAprovado;
+    @Autowired private ValidarValorPagamentoIgualReserva validarValorPagamentoIgualReserva;
+    @Autowired private ValidarDataCheckIn validarDataCheckIn;
 
     private Map<String, Map<String, List<IStrategy>>> rns;
 
@@ -89,7 +92,7 @@ public class Fachada implements IFachada {
         List<IStrategy> rnsAlterarReserva = List.of(
             validarDadosReserva, validarJanelaDatas, validarCapacidadeQuarto, 
             validarLimitePadraoQuarto, validarRegrasDiaria,
-            validarMinimoDiarias, calcularValorReserva, validarConfirmacaoCondicionadaPgto, validarDocumentoCheckIn, dispararNotificacoes, gerarLog
+            validarMinimoDiarias, calcularValorReserva, validarConfirmacaoCondicionadaPgto, validarDataCheckIn, validarDocumentoCheckIn, dispararNotificacoes, gerarLog
         );
 
         rns.put(Reserva.class.getName(), Map.of(
@@ -101,11 +104,10 @@ public class Fachada implements IFachada {
 
         ValidarDadosPagamento validarDadosPagamento = new ValidarDadosPagamento();
         CalcularEstorno calcularEstorno = new CalcularEstorno();
-        AtualizarReservaPagamentoAprovado atualizarReservaPagamentoAprovado = new AtualizarReservaPagamentoAprovado();
 
         rns.put(Pagamento.class.getName(), Map.of(
-            "SALVAR", List.of(validarDadosPagamento, atualizarReservaPagamentoAprovado, gerarLog),
-            "ALTERAR", List.of(validarDadosPagamento, atualizarReservaPagamentoAprovado, gerarLog),
+            "SALVAR", List.of(validarDadosPagamento, validarValorPagamentoIgualReserva, atualizarReservaPagamentoAprovado, gerarLog),
+            "ALTERAR", List.of(validarDadosPagamento, validarValorPagamentoIgualReserva, atualizarReservaPagamentoAprovado, gerarLog),
             "EXCLUIR", List.of(calcularEstorno, gerarLog), // Excluir pagamento = estorno
             "CONSULTAR", List.of(gerarLog)
         ));

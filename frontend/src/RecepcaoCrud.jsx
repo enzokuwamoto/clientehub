@@ -6,6 +6,7 @@ export default function RecepcaoCrud() {
   const [reservas, setReservas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   
   // Estado para os inputs de dataReal (mapeado por id da reserva)
   const [datasReais, setDatasReais] = useState({});
@@ -48,20 +49,22 @@ export default function RecepcaoCrud() {
   };
 
   const handleAction = async (reserva, actionType) => {
+    setError(null);
+    setSuccess(null);
     try {
       const payload = { ...reserva };
       const dataInformada = datasReais[reserva.id];
       
       if (actionType === 'CHECK_IN') {
         if (!dataInformada) {
-          alert('Por favor, informe a data/hora real de Check-in.');
+          setError('Por favor, informe a data/hora real de Check-in.');
           return;
         }
         payload.status = 'CHECK_IN';
         payload.dataCheckinReal = dataInformada;
       } else if (actionType === 'CHECK_OUT') {
         if (!dataInformada) {
-          alert('Por favor, informe a data/hora real de Check-out.');
+          setError('Por favor, informe a data/hora real de Check-out.');
           return;
         }
         payload.status = 'CHECK_OUT';
@@ -77,14 +80,18 @@ export default function RecepcaoCrud() {
       });
       
       if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || 'Erro ao processar a ação.');
+        let errMessage = 'Erro ao processar a ação.';
+        try {
+          const errObj = await res.json();
+          errMessage = errObj.erro || errObj.message || errObj.error || errMessage;
+        } catch(e) {}
+        throw new Error(errMessage);
       }
       
-      alert(`Ação ${actionType} registrada com sucesso!`);
+      setSuccess(`Ação ${actionType} registrada com sucesso!`);
       fetchData();
     } catch (err) {
-      alert(`Erro: ${err.message}`);
+      setError(err.message);
     }
   };
 
@@ -96,7 +103,8 @@ export default function RecepcaoCrud() {
           Controle de chegadas e partidas. Registre o momento exato em que o hóspede entrou ou saiu.
         </p>
         
-        {error && <div style={{ color: 'red', marginBottom: '16px' }}>{error}</div>}
+        {error && <div style={{ background: '#ffebee', color: '#c62828', padding: '16px', borderRadius: '4px', marginBottom: '16px' }}>{error}</div>}
+        {success && <div style={{ background: '#e8f5e9', color: '#2e7d32', padding: '16px', borderRadius: '4px', marginBottom: '16px' }}>{success}</div>}
         {loading && <p>Carregando...</p>}
 
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
